@@ -11,10 +11,11 @@ class AMNew extends Component {
         super(props);
 
         this.state = {
+            readyToCompileAndCreateContract: false,
             amNewContract: undefined,
-            statusMessage: '',
-            thisTxHash: '',
-            thisAddress: '',
+            statusMessage: 'Connecting to block chain plese wait...',
+            thisTxHash: undefined,
+            thisAddress: undefined,
             make: 'Honda',
             model: 'CRV',
             year: '2010',
@@ -45,12 +46,15 @@ class AMNew extends Component {
 
                 const compilerVersion = soljsonReleases[_.keys(soljsonReleases)[0]];
 
-                console.log("Browser-solc compiler version : " + compilerVersion);
+                console.log('Browser-solc compiler version',compilerVersion);
 
                 window.BrowserSolc.loadVersion(compilerVersion, (c) => {
                     this.compiler = c;
-                    this.setState({statusMessage:"ready!"}, () => {
-                        console.log("Solc Version Loaded: " + compilerVersion);
+                    this.setState({
+                        statusMessage: 'Ready to create compile and deploy car contracts',
+                        readyToCompileAndCreateContract: true
+                    }, () => {
+                        console.log('Solc Version Loaded', compilerVersion);
                     });
                 });
             });
@@ -64,10 +68,10 @@ class AMNew extends Component {
             compiler = this.compiler,
             { make, model, year, price, vin } = this.state;
 
-        console.log("compileAndDeploy called!");
+        console.log('Compile And Deploy started');
         
         this.setState({
-            statusMessage: "compiling and deploying!"
+            statusMessage: 'Compiling and deploying car contract'
         });
     
         var result = compiler.compile(this.amNewConctract(), optimize);
@@ -115,7 +119,7 @@ class AMNew extends Component {
                         console.log('deployment web3.eth.estimateGas error', err);
 
                         this.setState({
-                            statusMessage: "deployment web3.eth.estimateGas error: " + err
+                            statusMessage: 'deployment web3.eth.estimateGas error: ' + err
                         });
 
                         callBackGasPriceAndEstimate(err, 0, 0);
@@ -148,20 +152,20 @@ class AMNew extends Component {
             warnings = result.errors ? JSON.stringify(result.errors) + ',' : ''; // show warnings if they exist
 
         this.setState({
-            statusMessage: warnings + "Compiled! (inflated) estimateGas amount: " + inflatedGasCost + " (" + ethCost+ " Ether)"
+            statusMessage: warnings + 'Compiled! (inflated) estimateGas amount: ' + inflatedGasCost + ' (' + ethCost+ ' Ether)'
         });
 
         myContract.new(make, model, year, price, vin, web3.eth.accounts[0], 
             {from:web3.eth.accounts[0],data:bytecode,gas:inflatedGasCost}, 
             (err, newContract) => { 
 
-                console.log("newContract: ", newContract);
+                console.log('newContract', newContract);
 
                 if(err) {
 
-                    console.log("deployment err: " + err);
+                    console.log('deployment err', err);
                     this.setState({
-                        statusMessage: "deployment error: " + err
+                        statusMessage: 'deployment error: ' + err
                     });
 
                     return null;
@@ -170,16 +174,17 @@ class AMNew extends Component {
         
                     if(!newContract.address) {
 
-                        console.log("Contract transaction send: TransactionHash: " + newContract.transactionHash + " waiting to be mined...");
+                        console.log('Contract transaction send: TransactionHash waiting for mining', newContract.transactionHash);
+
                         this.setState({
-                            statusMessage: "Please wait a minute.",
+                            statusMessage: 'Contract transaction send and waiting for mining...',
                             thisTxHash: newContract.transactionHash,
-                            thisAddress: "waiting to be mined..."
+                            thisAddress: 'waiting to be mined for contract address...'
                         });
 
                     } else {
 
-                        console.log("Contract mined! Address: " + newContract.address);
+                        console.log('Contract mined! Address', newContract.address);
                         console.log('newContract Mined', newContract);
                         console.log('Car Details', newContract.carDetails());
                         this.setState({
@@ -218,21 +223,47 @@ class AMNew extends Component {
     }
     
     render() {
+
+        const { 
+            readyToCompileAndCreateContract,
+            statusMessage,
+            thisTxHash,
+            thisAddress
+        } = this.state;
+
         return (
         <div>
-            Enter Auto mobile details
-            <div>
-                Make : <input type = "text" />
-                Model : <input type = "text" />
-                IsConnected : {web3.isConnected().toString()}
-                <textarea>{this.compiledAMNewContract()}</textarea>
-                <input type = "button" value = "Deploy" onClick={ this.compileAndDeployCarContract } /> <br/>
-                Message: {this.state.statusMessage} <br/>
-                TransactionHash: {this.state.thisTxHash} <br/>
-                Deployed Contract Address and Details: {this.state.thisAddress} <br/>
-                {/*this.amNewConctract()*/}
-
+            <div>                
+                <p>{statusMessage}</p> <br/>
             </div>
+            {(readyToCompileAndCreateContract && web3.isConnected()) && <div>
+                <p>
+                    Enter Auto mobile details <br /><br />
+                </p>
+
+                <div>
+
+                    Make: <input type = "text" /> <br /><br />
+                    
+                    Model: <input type = "text" /> <br /><br /> 
+
+                    Year: <input type = "text" /> <br /><br /> 
+
+                    Price: <input type = "text" /> <br /><br /> 
+
+                    Vin: <input type = "text" /> <br /><br /> 
+
+                    <br />
+
+                    <input type = "button" value = "Deploy" onClick = { this.compileAndDeployCarContract } /> <br /> <br />
+                </div>
+
+                <div>
+                    {thisTxHash && <p>Transaction Hash: {thisTxHash}</p>} <br/>
+                    {thisAddress && <p>Contract Address: {thisAddress}</p>} <br/>
+                </div>
+            </div>}
+
         </div>
         );
     }
