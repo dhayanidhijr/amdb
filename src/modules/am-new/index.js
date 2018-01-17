@@ -11,7 +11,15 @@ class AMNew extends Component {
         super(props);
 
         this.state = {
-            amNewContract: undefined
+            amNewContract: undefined,
+            statusMessage: '',
+            thisTxHash: '',
+            thisAddress: '',
+            make: 'Honda',
+            model: 'CRV',
+            year: '2010',
+            price: '7500',
+            vin: 'asdfasdfasdfasd'
         }
 
         this.compileAndDeployCarContract = this.compileAndDeployCarContract.bind(this);
@@ -51,14 +59,10 @@ class AMNew extends Component {
     }
 
     compileAndDeployCarContract() {
-        this.compileAndDeploy('Honda', 'CRV', '2015', '7500', 'asdfasdfadsfasdf');
-    }
-
-    compileAndDeploy(make, model, year, price, vin) {
         
         const optimize = 1,
-            outerThis = this,
-            compiler = this.compiler;
+            compiler = this.compiler,
+            { make, model, year, price, vin } = this.state;
 
         console.log("compileAndDeploy called!");
         
@@ -70,19 +74,64 @@ class AMNew extends Component {
 
         if(result.errors && JSON.stringify(result.errors).match(/error/i)) {
             
-            outerThis.setState({
+            this.setState({
                 statusMessage: JSON.stringify(result.errors)
             });
 
             return false;
         } 
 
-        this.deployCarContract(result, make, model, year, price, vin);
+        this.getGasPriceAndEstimate(result, (err, gasPrice, gasEstimate) => {
+            this.deployCarContract(result, gasPrice, gasEstimate, make, model, year, price, vin);
+        });
 
         return true;
     }
 
-    deployCarContract(result, make, model, year, price, vin) {
+    getGasPriceAndEstimate(result, callBackGasPriceAndEstimate) {
+
+        const bytecode = '0x' + result.contracts[':Car'].bytecode;
+
+        web3.eth.getGasPrice((err, gasPrice) => {                
+        
+            if(err) {
+
+                console.log('deployment web3.eth.getGasPrice error', err);
+
+                this.setState({
+                    statusMessage: 'deployment web3.eth.getGasPrice error: ' + err
+                });
+
+                callBackGasPriceAndEstimate(err, 0, 0);
+
+            } else {
+                
+                console.log('current gasPrice (gas / ether)', gasPrice);
+
+                web3.eth.estimateGas({data: bytecode}, (err, gasEstimate) => {
+
+                    if(err) {
+
+                        console.log('deployment web3.eth.estimateGas error', err);
+
+                        this.setState({
+                            statusMessage: "deployment web3.eth.estimateGas error: " + err
+                        });
+
+                        callBackGasPriceAndEstimate(err, 0, 0);
+
+                    } else {
+
+                        console.log('deployment web3.eth.estimateGas amount', gasEstimate);
+                        callBackGasPriceAndEstimate(err, gasPrice, gasEstimate);
+
+                    }                    
+                });
+            }
+        });        
+    }
+
+    deployCarContract(result, gasPrice, gasEstimate, make, model, year, price, vin) {
 
         const carContract = result.contracts[':Car'],
             abi = JSON.parse(carContract.interface),
@@ -93,92 +142,56 @@ class AMNew extends Component {
         console.log('bytecode', JSON.stringify(bytecode));
         console.log('abi', JSON.stringify(abi));
         console.log('myContract', myContract);
+                        
+        const inflatedGasCost = Math.round(1.2 * gasEstimate),
+            ethCost = gasPrice * inflatedGasCost / 10000000000 / 100000000,
+            warnings = result.errors ? JSON.stringify(result.errors) + ',' : ''; // show warnings if they exist
 
-        web3.eth.getGasPrice((err,gasPrice) => {                
-            
-            if(err) {
+        this.setState({
+            statusMessage: warnings + "Compiled! (inflated) estimateGas amount: " + inflatedGasCost + " (" + ethCost+ " Ether)"
+        });
 
-                console.log('deployment web3.eth.getGasPrice error ', err);
+        myContract.new(make, model, year, price, vin, web3.eth.accounts[0], 
+            {from:web3.eth.accounts[0],data:bytecode,gas:inflatedGasCost}, 
+            (err, newContract) => { 
 
-                this.setState({
-                    statusMessage: 'deployment web3.eth.getGasPrice error: ' + err
-                });
+                console.log("newContract: ", newContract);
 
-                return false;
+                if(err) {
 
-            } else {
-                
-                console.log("current gasPrice (gas / ether): " + gasPrice);
+                    console.log("deployment err: " + err);
+                    this.setState({
+                        statusMessage: "deployment error: " + err
+                    });
 
-                web3.eth.estimateGas({data: bytecode}, (err,gasEstimate) => {
+                    return null;
 
-                    if(err) {
+                } else {
+        
+                    if(!newContract.address) {
 
-                        console.log("deployment web3.eth.estimateGas error: " + err);
-
+                        console.log("Contract transaction send: TransactionHash: " + newContract.transactionHash + " waiting to be mined...");
                         this.setState({
-                            statusMessage: "deployment web3.eth.estimateGas error: " + err
+                            statusMessage: "Please wait a minute.",
+                            thisTxHash: newContract.transactionHash,
+                            thisAddress: "waiting to be mined..."
                         });
-
-                        return null;
 
                     } else {
 
-                        console.log("deployment web3.eth.estimateGas amount: " + gasEstimate);
-                        
-                        const inflatedGasCost = Math.round(1.2 * gasEstimate),
-                            ethCost = gasPrice * inflatedGasCost / 10000000000 / 100000000,
-                            warnings = result.errors ? JSON.stringify(result.errors) + ',' : ''; // show warnings if they exist
-
+                        console.log("Contract mined! Address: " + newContract.address);
+                        console.log('newContract Mined', newContract);
+                        console.log('Car Details', newContract.carDetails());
                         this.setState({
-                            statusMessage: warnings + "Compiled! (inflated) estimateGas amount: " + inflatedGasCost + " (" + ethCost+ " Ether)"
+                            statusMessage: 'Contract Deployed ' + newContract.carDetails(),
+                            thisAddress: newContract.address
                         });
 
-                        myContract.new(make, model, year, price, vin, web3.eth.accounts[0], 
-                            {from:web3.eth.accounts[0],data:bytecode,gas:inflatedGasCost}, 
-                            (err, newContract) => { 
-
-                                console.log("newContract: ", newContract);
-
-                                if(err) {
-
-                                    console.log("deployment err: " + err);
-                                    this.setState({
-                                        statusMessage: "deployment error: " + err
-                                    });
-
-                                    return null;
-
-                                } else {
-                        
-                                    if(!newContract.address) {
-
-                                        console.log("Contract transaction send: TransactionHash: " + newContract.transactionHash + " waiting to be mined...");
-                                        this.setState({
-                                            statusMessage: "Please wait a minute.",
-                                            thisTxHash: newContract.transactionHash,
-                                            thisAddress: "waiting to be mined..."
-                                        });
-
-                                    } else {
-
-                                        console.log("Contract mined! Address: " + newContract.address);
-                                        console.log('newContract Mined', newContract);
-                                        console.log('Car Details', newContract.carDetails());
-                                        this.setState({
-                                            statusMessage: "Contract Deployed to " + this.state.thisNetId,
-                                            thisAddress: newContract.address
-                                        });
-
-                                        return null;
-                                    }
-                                }
-                            }
-                        );
+                        return null;
                     }
-                });
+                }
             }
-        });
+        );
     }
 
     readAMNewContract(contractFile) {
@@ -214,10 +227,9 @@ class AMNew extends Component {
                 IsConnected : {web3.isConnected().toString()}
                 <textarea>{this.compiledAMNewContract()}</textarea>
                 <input type = "button" value = "Deploy" onClick={ this.compileAndDeployCarContract } /> <br/>
-                statusMessage: {this.state.statusMessage} <br/>
-                thisNetId: {this.state.thisNetId} <br/>
-                thisTxHash: {this.state.thisTxHash} <br/>
-                thisAddress: {this.state.thisAddress} <br/>
+                Message: {this.state.statusMessage} <br/>
+                TransactionHash: {this.state.thisTxHash} <br/>
+                Deployed Contract Address and Details: {this.state.thisAddress} <br/>
                 {/*this.amNewConctract()*/}
 
             </div>
