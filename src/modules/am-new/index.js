@@ -221,6 +221,13 @@ class AMNew extends Component {
     compiledAMNewContract() {
         return this.state.compiledAMNewContract;
     }
+
+    onCarDataChange(field, { target }) {
+        const { value } = target,
+            updateState = {};
+        updateState[field] = value;
+        this.setState(updateState);       
+    }
     
     render() {
 
@@ -228,7 +235,8 @@ class AMNew extends Component {
             readyToCompileAndCreateContract,
             statusMessage,
             thisTxHash,
-            thisAddress
+            thisAddress,
+            make, model, year, price, vin
         } = this.state;
 
         return (
@@ -243,15 +251,15 @@ class AMNew extends Component {
 
                 <div>
 
-                    Make: <input type = "text" /> <br /><br />
+                    Make: <input type = "text" value = { make } onChange = { this.onCarDataChange.bind(this, 'make') } /> <br /><br />
                     
-                    Model: <input type = "text" /> <br /><br /> 
+                    Model: <input type = "text" value = { model } onChange = { this.onCarDataChange.bind(this, 'model') } /> <br /><br /> 
 
-                    Year: <input type = "text" /> <br /><br /> 
+                    Year: <input type = "text" value = { year } onChange = { this.onCarDataChange.bind(this, 'year') } /> <br /><br /> 
 
-                    Price: <input type = "text" /> <br /><br /> 
+                    Price: <input type = "text" value = { price } onChange = { this.onCarDataChange.bind(this, 'price') } /> <br /><br /> 
 
-                    Vin: <input type = "text" /> <br /><br /> 
+                    Vin: <input type = "text" value = { vin } onChange = { this.onCarDataChange.bind(this, 'vin') } /> <br /><br /> 
 
                     <br />
 
