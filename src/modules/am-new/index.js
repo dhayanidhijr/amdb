@@ -74,111 +74,112 @@ class AMNew extends Component {
                 statusMessage: JSON.stringify(result.errors)
             });
 
-        } else {
-          
-            console.log(result);
+            return false;
+        } 
 
-            const carContract = result.contracts[":Car"],
-                abi = JSON.parse(carContract.interface),
-                bytecode = "0x" + carContract.bytecode,
-                myContract = web3.eth.contract(abi);
+        this.deployCarContract(result, make, model, year, price, vin);
 
-            console.log('Car Contract', carContract);          
-    
-          
-            console.log("bytecode: " + JSON.stringify(bytecode));
-            console.log("abi: " + JSON.stringify(abi));
-            console.log("myContract: ");
-            console.log(myContract);
+        return true;
+    }
 
-            web3.eth.getGasPrice((err,gasPrice) => {                
+    deployCarContract(result, make, model, year, price, vin) {
+
+        const carContract = result.contracts[':Car'],
+            abi = JSON.parse(carContract.interface),
+            bytecode = '0x' + carContract.bytecode,
+            myContract = web3.eth.contract(abi),
+            outerThis = this;
+
+        console.log('carContract', carContract);              
+        console.log('bytecode', JSON.stringify(bytecode));
+        console.log('abi', JSON.stringify(abi));
+        console.log('myContract', myContract);
+
+        web3.eth.getGasPrice((err,gasPrice) => {                
+            
+            if(err) {
+
+                console.log('deployment web3.eth.getGasPrice error ', err);
+
+                outerThis.setState({
+                    statusMessage: 'deployment web3.eth.getGasPrice error: ' + err
+                });
+
+                return false;
+
+            } else {
                 
-                if(err) {
+                console.log("current gasPrice (gas / ether): " + gasPrice);
 
-                    console.log("deployment web3.eth.getGasPrice error: " + err);
+                web3.eth.estimateGas({data: bytecode}, function(err,gasEstimate) {
 
-                    outerThis.setState({
-                        statusMessage: "deployment web3.eth.getGasPrice error: " + err
-                    });
+                    if(err) {
 
-                    return null;
+                        console.log("deployment web3.eth.estimateGas error: " + err);
 
-                } else {
-                    
-                    console.log("current gasPrice (gas / ether): " + gasPrice);
+                        outerThis.setState({
+                            statusMessage: "deployment web3.eth.estimateGas error: " + err
+                        });
 
-                    web3.eth.estimateGas({data: bytecode}, function(err,gasEstimate) {
+                        return null;
 
-                        if(err) {
+                    } else {
 
-                            console.log("deployment web3.eth.estimateGas error: " + err);
+                        console.log("deployment web3.eth.estimateGas amount: " + gasEstimate);
+                        
+                        const inflatedGasCost = Math.round(1.2 * gasEstimate),
+                            ethCost = gasPrice * inflatedGasCost / 10000000000 / 100000000,
+                            warnings = result.errors ? JSON.stringify(result.errors) + ',' : ''; // show warnings if they exist
 
-                            outerThis.setState({
-                                statusMessage: "deployment web3.eth.estimateGas error: " + err
-                            });
+                        outerThis.setState({
+                            statusMessage: warnings + "Compiled! (inflated) estimateGas amount: " + inflatedGasCost + " (" + ethCost+ " Ether)"
+                        });
 
-                            return null;
+                        myContract.new(make, model, year, price, vin, web3.eth.accounts[0], 
+                            {from:web3.eth.accounts[0],data:bytecode,gas:inflatedGasCost}, 
+                            function(err, newContract) { 
 
-                        } else {
+                                console.log("newContract: ", newContract);
 
-                            console.log("deployment web3.eth.estimateGas amount: " + gasEstimate);
-                            
-                            const inflatedGasCost = Math.round(1.2 * gasEstimate),
-                                ethCost = gasPrice * inflatedGasCost / 10000000000 / 100000000,
-                                warnings = result.errors ? JSON.stringify(result.errors) + ',' : ''; // show warnings if they exist
+                                if(err) {
 
-                            outerThis.setState({
-                                statusMessage: warnings + "Compiled! (inflated) estimateGas amount: " + inflatedGasCost + " (" + ethCost+ " Ether)"
-                            });
+                                    console.log("deployment err: " + err);
+                                    outerThis.setState({
+                                        statusMessage: "deployment error: " + err
+                                    });
 
-                            myContract.new(make, model, year, price, vin, web3.eth.accounts[0], 
-                                {from:web3.eth.accounts[0],data:bytecode,gas:inflatedGasCost}, 
-                                function(err, newContract) { 
+                                    return null;
 
-                                    console.log("newContract: ", newContract);
+                                } else {
+                        
+                                    if(!newContract.address) {
 
-                                    if(err) {
-
-                                        console.log("deployment err: " + err);
+                                        console.log("Contract transaction send: TransactionHash: " + newContract.transactionHash + " waiting to be mined...");
                                         outerThis.setState({
-                                            statusMessage: "deployment error: " + err
+                                            statusMessage: "Please wait a minute.",
+                                            thisTxHash: newContract.transactionHash,
+                                            thisAddress: "waiting to be mined..."
+                                        });
+
+                                    } else {
+
+                                        console.log("Contract mined! Address: " + newContract.address);
+                                        console.log('newContract Mined', newContract);
+                                        console.log('Car Details', newContract.carDetails());
+                                        outerThis.setState({
+                                            statusMessage: "Contract Deployed to " + outerThis.state.thisNetId,
+                                            thisAddress: newContract.address
                                         });
 
                                         return null;
-
-                                    } else {
-                            
-                                        if(!newContract.address) {
-
-                                            console.log("Contract transaction send: TransactionHash: " + newContract.transactionHash + " waiting to be mined...");
-                                            outerThis.setState({
-                                                statusMessage: "Please wait a minute.",
-                                                thisTxHash: newContract.transactionHash,
-                                                thisAddress: "waiting to be mined..."
-                                            });
-
-                                        } else {
-
-                                            console.log("Contract mined! Address: " + newContract.address);
-                                            console.log('newContract Mined', newContract);
-                                            console.log('Car Details', newContract.carDetails());
-                                            outerThis.setState({
-                                                statusMessage: "Contract Deployed to " + outerThis.state.thisNetId,
-                                                thisAddress: newContract.address
-                                            });
-
-                                            return null;
-                                        }
                                     }
                                 }
-                            );
-                        }
-                    });
-                }
-            });
-        }
-
-        return null;
+                            }
+                        );
+                    }
+                });
+            }
+        });
     }
 
     readAMNewContract(contractFile) {
