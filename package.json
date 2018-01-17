@@ -2,10 +2,12 @@
   "name": "amdb",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://s3.amazonaws.com/fndhlp/React/amdb/build",
   "dependencies": {
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
-    "react-scripts": "1.1.0"
+    "react-scripts": "1.1.0",
+    "web3": "0.19.0"
   },
   "scripts": {
     "start": "react-scripts start",
