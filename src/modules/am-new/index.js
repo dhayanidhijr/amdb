@@ -87,8 +87,7 @@ class AMNew extends Component {
         const carContract = result.contracts[':Car'],
             abi = JSON.parse(carContract.interface),
             bytecode = '0x' + carContract.bytecode,
-            myContract = web3.eth.contract(abi),
-            outerThis = this;
+            myContract = web3.eth.contract(abi);
 
         console.log('carContract', carContract);              
         console.log('bytecode', JSON.stringify(bytecode));
@@ -101,7 +100,7 @@ class AMNew extends Component {
 
                 console.log('deployment web3.eth.getGasPrice error ', err);
 
-                outerThis.setState({
+                this.setState({
                     statusMessage: 'deployment web3.eth.getGasPrice error: ' + err
                 });
 
@@ -117,7 +116,7 @@ class AMNew extends Component {
 
                         console.log("deployment web3.eth.estimateGas error: " + err);
 
-                        outerThis.setState({
+                        this.setState({
                             statusMessage: "deployment web3.eth.estimateGas error: " + err
                         });
 
@@ -131,7 +130,7 @@ class AMNew extends Component {
                             ethCost = gasPrice * inflatedGasCost / 10000000000 / 100000000,
                             warnings = result.errors ? JSON.stringify(result.errors) + ',' : ''; // show warnings if they exist
 
-                        outerThis.setState({
+                        this.setState({
                             statusMessage: warnings + "Compiled! (inflated) estimateGas amount: " + inflatedGasCost + " (" + ethCost+ " Ether)"
                         });
 
@@ -144,7 +143,7 @@ class AMNew extends Component {
                                 if(err) {
 
                                     console.log("deployment err: " + err);
-                                    outerThis.setState({
+                                    this.setState({
                                         statusMessage: "deployment error: " + err
                                     });
 
@@ -155,7 +154,7 @@ class AMNew extends Component {
                                     if(!newContract.address) {
 
                                         console.log("Contract transaction send: TransactionHash: " + newContract.transactionHash + " waiting to be mined...");
-                                        outerThis.setState({
+                                        this.setState({
                                             statusMessage: "Please wait a minute.",
                                             thisTxHash: newContract.transactionHash,
                                             thisAddress: "waiting to be mined..."
@@ -166,8 +165,8 @@ class AMNew extends Component {
                                         console.log("Contract mined! Address: " + newContract.address);
                                         console.log('newContract Mined', newContract);
                                         console.log('Car Details', newContract.carDetails());
-                                        outerThis.setState({
-                                            statusMessage: "Contract Deployed to " + outerThis.state.thisNetId,
+                                        this.setState({
+                                            statusMessage: "Contract Deployed to " + this.state.thisNetId,
                                             thisAddress: newContract.address
                                         });
 
