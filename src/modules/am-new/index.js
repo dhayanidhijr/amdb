@@ -41,7 +41,7 @@ class AMNew extends Component {
 
                 window.BrowserSolc.loadVersion(compilerVersion, (c) => {
                     this.compiler = c;
-                    this.setState({statusMessage:"ready!"},function(){
+                    this.setState({statusMessage:"ready!"}, () => {
                         console.log("Solc Version Loaded: " + compilerVersion);
                     });
                 });
@@ -111,7 +111,7 @@ class AMNew extends Component {
                 
                 console.log("current gasPrice (gas / ether): " + gasPrice);
 
-                web3.eth.estimateGas({data: bytecode}, function(err,gasEstimate) {
+                web3.eth.estimateGas({data: bytecode}, (err,gasEstimate) => {
 
                     if(err) {
 
@@ -137,7 +137,7 @@ class AMNew extends Component {
 
                         myContract.new(make, model, year, price, vin, web3.eth.accounts[0], 
                             {from:web3.eth.accounts[0],data:bytecode,gas:inflatedGasCost}, 
-                            function(err, newContract) { 
+                            (err, newContract) => { 
 
                                 console.log("newContract: ", newContract);
 
