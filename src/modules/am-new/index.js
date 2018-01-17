@@ -20,7 +20,7 @@ class AMNew extends Component {
             model: 'CRV',
             year: '2010',
             price: '7500',
-            vin: 'asdfasdfasdfasd'
+            vin: 'some vin number'
         }
 
         this.compileAndDeployCarContract = this.compileAndDeployCarContract.bind(this);
@@ -224,8 +224,14 @@ class AMNew extends Component {
 
     onCarDataChange(field, { target }) {
         const { value } = target,
-            updateState = {};
+            { make, model, year, price, vin } = { ...this.state },
+            updateState = {make, model, year, price, vin};
+
         updateState[field] = value;
+
+        updateState.year = (parseInt(updateState.year, 10) || 0).toString();
+        updateState.price = parseInt(updateState.price, 10) || 0;
+
         this.setState(updateState);       
     }
     
@@ -245,9 +251,8 @@ class AMNew extends Component {
                 <p>{statusMessage}</p> <br/>
             </div>
             {(readyToCompileAndCreateContract && web3.isConnected()) && <div>
-                <p>
-                    Enter Auto mobile details <br /><br />
-                </p>
+
+                <h3>Enter Auto mobile details</h3> <br /><br />
 
                 <div>
 
